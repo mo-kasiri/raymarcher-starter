@@ -1,91 +1,78 @@
 #define PI 3.1415926538
 #define MAX_DIST 100.
-#define MAX_STEPS 1000
+#define MAX_STEPS 500
 #define SURFACE_DIST 0.01
 
 uniform vec2 iResolution;
 uniform float iTime;
-
+uniform vec2 iMouse;
 
 varying vec2 vUv;
 
-
-
 float GetDist(vec3 p){
-    vec4 sphere = vec4(0.0, iTime +  1.0, iTime + 6.0, 1.0);
+    vec4 sphere = vec4(0.0, 1.0, 6.0, 1.0);
     float sphereDist = length(p - sphere.xyz) - sphere.w;
-    float planeDist = p.y;
-    float dis = min(sphereDist, planeDist);
+    float pydist = p.y;
+    float dis = min(sphereDist, pydist);
     return dis;
 }
 
 float RayMarch(vec3 ro, vec3 rd){
     float d0 = 0.0;
     for(int i=0; i<MAX_STEPS; i++){
-        vec3 p = ro + d0 * rd;
+        vec3 p = ro + d0 * rd; // blue points on the circles
         float ds = GetDist(p);
         d0 += ds;
-        //if (ds < SURFACE_DIST || d0 > MAX_DIST) break;
-        if (ds < SURFACE_DIST)  return .0;
-        else if (ds > MAX_DIST) return 1.;
+        if (ds < SURFACE_DIST || d0 > MAX_DIST) break;
     }
-    //return d0;
+    return d0; // Returns the distance of the camera origin (based on the specific pixel) to the sphere of plane
+}
+
+vec3 GetNormal(vec3 p)
+{
+    float d = GetDist(p);
+    vec2 e = vec2(0.01,0.0);
+    vec3 dists = vec3(GetDist(p- e.xyy), GetDist(p - e.yxy), GetDist(p - e.yyx)); //
+    vec3 n = d - dists;
+    return normalize(n);
+}
+
+float GetLight (vec3 p){
+    vec4 sphere = vec4(0.0, 1.0, 6.0, 1.0);
+    vec3 lightPos = vec3(0., 5., 6.);
+    lightPos.xz += vec2(sin(iTime), cos(iTime)*2.);
+    //lightPos.y += 2. * iMouse.y;
+    //lightPos.x += 2. * iMouse.x;
+    vec3 lightDirection = normalize(lightPos - p);
+    vec3 n = GetNormal(p);
+    //float dif = dot(n,l);
+    float dif = clamp(dot(n,lightDirection), 0., 1.);
+
+    float d = RayMarch(p + n * SURFACE_DIST * 2., lightDirection);
+    if(d<length(lightPos - p)) dif = dif * 0.5;
+    return dif;
 }
 
 void main()
 {
-    vec2 p = (2. * gl_FragCoord.xy - iResolution.xy)/ iResolution.y;
+    vec2 uv = (2. * gl_FragCoord.xy - iResolution.xy)/ iResolution.y;
     //vec2 p = vUv;
 
     vec3 col = vec3(0);
-    vec3 ro = vec3( 0.0, 1., 0.0);
-    vec3 rd = normalize(vec3(p.x, p.y , 1.0));
+    vec3 ro = vec3(0.0, 1., 0.0);
+    vec3 rd = normalize(vec3(uv.x, uv.y , 1.0));
 
-    float d = RayMarch(ro,rd);
-    //d/= 6.;
-    col = vec3(d);
+    float d = RayMarch(ro,rd); // The distanse from the origin (based on pixel direction) to the collision point
+
+    vec3 p = ro + rd * d;   // The coordinate of the collision point based on the ray casted from camera origin (based on pixel direction)
+                            // another word: if you cast a ray from each pixel it will collid to a point,
+                            // the coordination of that specific point is 'vec3 p = ro + rd * d' which d was calculated by raymarching
+
+
+    float dif = GetLight(p);
+    col = vec3(dif);
+
+    //vec3 normcol = normalize(vec3(col));
+    //col = GetNormal(p);
     gl_FragColor = vec4(col,1.0);
 }
-
-
-
-
-/*//float strength = fract(10.0 * vUv.y);
-//float strength = ceil(sin(60.0 * vUv.y));
-//float strength  = floor(mod(vUv.y * 20.0 , 2.0));
-//    float strengthV = mod(vUv.x * 10.0, 1.0);
-//    strengthV = step(0.8, strengthV);
-//
-//    float strengthH = mod(vUv.y * 10.0, 1.0);
-//    strengthH = step(0.8, strengthH);
-
-//float intersection = step(1.1, strengthH + strengthV);
-//float intersection = strengthV + strengthH;
-//    if(strengthH == strengthV){
-//        intersection = strengthH;
-//    }
-//float strength = vUv.x;
-
-//    vec2 uv = vUv;
-//    vec2 uv2 = vUv;
-//    uv -= 0.5;
-//    uv2 -= 0.5;
-//
-//
-//    uv.x = uv.x * cos(PI/ 4.0) - uv.y * sin(PI/4.0);
-//    uv.y = uv.x * sin(PI/4.0) + uv.y * cos(PI/4.0);
-//
-//    uv2.x = uv2.x * cos(-PI/ 4.0) - uv2.y * sin(-PI/4.0);
-//    uv2.y = uv2.x * sin(-PI/4.0) + uv2.y * cos(-PI/4.0);
-//
-//    uv.y  *= 0.5;
-//    uv2.y *= 0.5;
-//
-//    float strength = 0.015 / length(uv) - 0.1;
-//    strength += 0.015 / length(uv2) - 0.1;*/
-
-//    vec2 uv = vUv;
-//    uv -= 0.5;
-//    float strength = floor(length(uv) * 4.0);
-
-//gl_FragColor = vec4(strength, strength, strength, 1.0);

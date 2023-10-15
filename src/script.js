@@ -59,8 +59,9 @@ function init(){
     scene.add(mesh, axisHelper);
 
     document.onmousemove = function (e){
-        uniforms.iMouse.value.x = e.pageX;
-        uniforms.iMouse.value.y = e.pageY;
+        uniforms.iMouse.value.x = e.pageX / sizes.width;
+        uniforms.iMouse.value.y = e.pageY / sizes.height;
+        //console.log(e.pageY / sizes.height);
     }
 }
 
